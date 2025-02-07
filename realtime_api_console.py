@@ -57,6 +57,7 @@ async def handle_realtime_connection() -> None:
                     connected.set()
                     continue
 
+                # 回應內容的語音也是一段一段送來
                 if event.type == "response.audio.delta":
                     if event.item_id != last_audio_item_id:
                         audio_player.reset_frame_count()
@@ -66,12 +67,13 @@ async def handle_realtime_connection() -> None:
                     audio_player.add_data(bytes_data)
                     continue
                 
-                # 如果使用者有講新的話，就停止播放音訊
+                # 如果使用者有講新的話，就停止播放音訊，避免新對話的文字回應送來了
+                # 但之前的語音回覆還在繼續播放
                 if event.type == "input_audio_buffer.speech_started":
                     audio_player.stop()
                     continue
 
-                # 回應內容是用串流方式一段一段送回來
+                # 回應內容的文字是用串流方式一段一段送回來
                 if event.type == "response.audio_transcript.delta":
                     try:
                         text = acc_items[event.item_id]
