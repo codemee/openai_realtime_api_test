@@ -65,6 +65,11 @@ async def handle_realtime_connection() -> None:
                     bytes_data = base64.b64decode(event.delta)
                     audio_player.add_data(bytes_data)
                     continue
+                
+                # 如果使用者有講新的話，就停止播放音訊
+                if event.type == "input_audio_buffer.speech_started":
+                    audio_player.stop()
+                    continue
 
                 # 回應內容是用串流方式一段一段送回來
                 if event.type == "response.audio_transcript.delta":
