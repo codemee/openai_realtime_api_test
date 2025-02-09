@@ -27,19 +27,23 @@ async def handle_realtime_connection() -> None:
 
     async with client.beta.realtime.connect(
         model="gpt-4o-realtime-preview",
+        # 可以透過 extra_query 傳遞額外的引數
+        extra_query = {"voice": "alloy"},
     ) as conn:
         connection = conn
-        # note: this is the default and can be omitted
-        # if you want to manually handle VAD yourself, then set `'turn_detection': None`
-        await conn.session.update(
-            session={
-                # "turn_detection": {"type": "server_vad"},
-                # 雖然 input_audio_transcription 的所有參數都是 optional，
-                # 但是若傳空的物件，雖然可以建立連線，但是開始傳送語音就會出錯
-                # "input_audio_transcription": {"model": "whisper-1"},
-                "voice": "coral",
-            }
-        )
+        # 建立交談階段後還可以修改設定
+        # await conn.session.update(
+        #     session={
+        #         # 伺服端預設就會採用 VAD（Voice Activation Detection）
+        #         # 自動偵測開始講話與結束，若改成 'turn_detection': None，
+        #         # 就要手動在講話結束時提交音訊資料
+        #         "turn_detection": {"type": "server_vad"},
+        #         # 雖然 input_audio_transcription 的所有參數都是 optional，
+        #         # 但是若傳空的物件，雖然可以建立連線，但是開始傳送語音就會出錯
+        #         "input_audio_transcription": {"model": "whisper-1"},
+        #         "voice": "alloy",
+        #     }
+        # )
 
         acc_items: dict[str, Any] = {}
 
@@ -50,11 +54,11 @@ async def handle_realtime_connection() -> None:
                       f'{event.item_id if hasattr(event, "item_id") else ""})')
                 if event.type == "session.created":
                     session = event.session
+                    connected.set()
                     continue
 
                 if event.type == "session.updated":
                     session = event.session
-                    connected.set()
                     continue
 
                 # 回應內容的語音也是一段一段送來
@@ -77,14 +81,21 @@ async def handle_realtime_connection() -> None:
                 if event.type == "response.audio_transcript.delta":
                     try:
                         text = acc_items[event.item_id]
-                    except KeyError:
+                    except KeyError: # 第一次收到文字回應的片段
                         acc_items[event.item_id] = event.delta
-                    else:
+                    else: # 累加之後收到的文字回應片段
                         acc_items[event.item_id] = text + event.delta
 
                     # 清除顯示區域重新顯示累加的回應內容才能呈現串流的效果
                     # print(f"\r{acc_items[event.item_id]}", flush = True, end="")
                     continue
+                
+                # 當回應內容的文字送完了，就印出來
+                if event.type == "response.audio_transcript.done":
+                    print(f"{acc_items[event.item_id]}")
+                    del acc_items[event.item_id]
+                    continue
+
         except asyncio.CancelledError:
             pass
 
