@@ -32,18 +32,18 @@ async def handle_realtime_connection() -> None:
     ) as conn:
         connection = conn
         # 建立交談階段後還可以修改設定
-        # await conn.session.update(
-        #     session={
-        #         # 伺服端預設就會採用 VAD（Voice Activation Detection）
-        #         # 自動偵測開始講話與結束，若改成 'turn_detection': None，
-        #         # 就要手動在講話結束時提交音訊資料
-        #         "turn_detection": {"type": "server_vad"},
+        await conn.session.update(
+            session={
+                # 伺服端預設就會採用 VAD（Voice Activity Detection）
+                # 自動偵測講話啟始與結束，若改成 'turn_detection': None，
+                # 就會關閉自動偵測講話功能，要手動在講話結束時提交音訊資料
+                "turn_detection": None,
         #         # 雖然 input_audio_transcription 的所有參數都是 optional，
         #         # 但是若傳空的物件，雖然可以建立連線，但是開始傳送語音就會出錯
         #         "input_audio_transcription": {"model": "whisper-1"},
         #         "voice": "alloy",
-        #     }
-        # )
+            }
+        )
 
         acc_items: dict[str, Any] = {}
 
@@ -92,7 +92,8 @@ async def handle_realtime_connection() -> None:
                 
                 # 當回應內容的文字送完了，就印出來
                 if event.type == "response.audio_transcript.done":
-                    print(f"{acc_items[event.item_id]}")
+                    # print(f"{acc_items[event.item_id]}")
+                    print(event.transcript)
                     del acc_items[event.item_id]
                     continue
 
@@ -126,7 +127,7 @@ async def send_mic_audio() -> None:
 
             data, _ = stream.read(read_size)
 
-            # 傳送音訊資料給伺服端，伺服端會自動判斷段落就回應
+            # 傳送音訊資料給伺服端
             await connection.input_audio_buffer.append(
                 audio=base64.b64encode(cast(Any, data)).decode("utf-8")
             )
@@ -158,6 +159,9 @@ async def main() -> None:
                 should_send_audio.set()
             else:
                 should_send_audio.clear()
+                # 由於關閉 VAD，所以要手動提交語音並且指示伺服端生成回應
+                await connection.input_audio_buffer.commit()
+                await connection.response.create()
         elif key == "q":
             break
         await asyncio.sleep(0)

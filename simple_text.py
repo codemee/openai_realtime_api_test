@@ -17,10 +17,13 @@ async def main():
         await connection.response.create()
 
         async for event in connection:
+            print(event.type)
             if event.type == 'response.text.delta':
-                print(event.delta, flush=True, end="")
+                # print(event.delta, flush=True, end="")
+                pass
 
             elif event.type == 'response.text.done':
+                print(event.text)
                 print()
 
             elif event.type == "response.done":
