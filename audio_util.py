@@ -16,7 +16,30 @@ SAMPLE_RATE = 24000
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 
+def audio_to_pcm16_base64(audio_bytes: bytes) -> bytes:
+    # load the audio file from the byte stream
+    audio = AudioSegment.from_file(io.BytesIO(audio_bytes))
+    print(f"Loaded audio: {audio.frame_rate=} {audio.channels=} {audio.sample_width=} {audio.frame_width=}")
+    # resample to 24kHz mono pcm16
+    pcm_audio = audio.set_frame_rate(SAMPLE_RATE).set_channels(CHANNELS).set_sample_width(2).raw_data
+    # return pcm_audio
+    encoded = base64.b64encode(pcm_audio).decode('ascii')
+    return encoded
 
+# utility functions
+# source: https://reurl.cc/1XaNzX
+def float_to_16bit_pcm(float32_array):
+    clipped = [max(-1.0, min(1.0, x)) for x in float32_array]
+    pcm16 = b''.join(struct.pack('<h', int(x * 32767)) for x in clipped)
+    return pcm16
+
+def base64_encode_audio(float32_array):
+    pcm_bytes = float_to_16bit_pcm(float32_array)
+    encoded = base64.b64encode(pcm_bytes).decode('ascii')
+    return encoded
+
+# utility class
+# source: https://reurl.cc/mRjK7W
 class AudioPlayerAsync:
     def __init__(self):
         self.queue = []

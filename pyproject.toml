@@ -12,6 +12,7 @@ dependencies = [
     "pyaudio>=0.2.14",
     "pydub>=0.25.1",
     "sounddevice>=0.5.1",
+    "soundfile>=0.13.1",
     "textual>=1.0.0",
     "textual-dev>=1.7.0",
 ]
