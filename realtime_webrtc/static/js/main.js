@@ -14,12 +14,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
                 isStreamActive = true;
                 updateButtonState(true);
+                clearStatus();
                 appendStatus('麥克風已開啟');
                 
                 // 建立 WebRTC 連線
                 await initWebRTC(mediaStream);
             } catch (error) {
                 console.error('無法取得麥克風存取權限:', error);
+                clearStatus();
                 appendStatus('無法取得麥克風存取權限');
             }
         } else {
@@ -30,6 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             isStreamActive = false;
             updateButtonState(false);
+            clearStatus();
             appendStatus('麥克風已關閉');
         }
     });
@@ -85,7 +88,8 @@ async function initWebRTC(stream) {
   
     // 加入要串流給伺服端的音軌，此處串接麥克風
     pc.addTrack(stream.getTracks()[0]);
-    appendStatus('音訊串流已就緒 ');
+    clearStatus();
+    appendStatus('使用 ' + stream.getTracks()[0].label);
   
     // 設定標籤為 "oai-events"，用來傳遞 Realtime API 事件的資料通道
     const dc = pc.createDataChannel("oai-events");
