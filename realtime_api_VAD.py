@@ -23,7 +23,7 @@ async def handle_realtime_connection() -> None:
     session: Session | None = None
 
     client: AsyncOpenAI = AsyncOpenAI()
-    last_audio_item_id = None
+    # last_audio_item_id = None
 
     async with client.beta.realtime.connect(
         model="gpt-4o-realtime-preview",
@@ -32,56 +32,35 @@ async def handle_realtime_connection() -> None:
     ) as conn:
         connection = conn
 
-        acc_items: dict[str, Any] = {}
-
         try:
             async for event in conn:
                 print(f'{event.type}:id('
                       f'{event.item.id if hasattr(event, "item") else ""}'
                       f'{event.item_id if hasattr(event, "item_id") else ""})')
+
                 if event.type == "session.created":
                     session = event.session
                     connected.set()
                     continue
 
-                if event.type == "session.updated":
-                    session = event.session
-                    continue
-
                 # 回應內容的語音也是一段一段送來
                 if event.type == "response.audio.delta":
-                    if event.item_id != last_audio_item_id:
-                        audio_player.reset_frame_count()
-                        last_audio_item_id = event.item_id
-
                     bytes_data = base64.b64decode(event.delta)
                     audio_player.add_data(bytes_data)
                     continue
                 
-                # 如果使用者有講新的話，就停止播放音訊，避免新對話的文字回應送來了
-                # 但之前的語音回覆還在繼續播放
+                # 如果使用者有講新的話，就停止播放音訊，避免干擾
                 if event.type == "input_audio_buffer.speech_started":
                     audio_player.stop()
                     continue
 
                 # 回應內容的文字是用串流方式一段一段送回來
                 if event.type == "response.audio_transcript.delta":
-                    try:
-                        text = acc_items[event.item_id]
-                    except KeyError: # 第一次收到文字回應的片段
-                        acc_items[event.item_id] = event.delta
-                    else: # 累加之後收到的文字回應片段
-                        acc_items[event.item_id] = text + event.delta
-
-                    # 清除顯示區域重新顯示累加的回應內容才能呈現串流的效果
-                    # print(f"\r{acc_items[event.item_id]}", flush = True, end="")
                     continue
                 
                 # 當回應內容的文字送完了，就印出來
                 if event.type == "response.audio_transcript.done":
-                    # print(f"{acc_items[event.item_id]}")
                     print(event.transcript)
-                    del acc_items[event.item_id]
                     continue
 
         except asyncio.CancelledError:
