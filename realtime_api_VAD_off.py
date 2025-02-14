@@ -23,7 +23,6 @@ async def handle_realtime_connection() -> None:
     session: Session | None = None
 
     client: AsyncOpenAI = AsyncOpenAI()
-    last_audio_item_id = None
 
     async with client.beta.realtime.connect(
         model="gpt-4o-realtime-preview",
@@ -33,19 +32,8 @@ async def handle_realtime_connection() -> None:
         connection = conn
         # 建立交談階段後還可以修改設定
         await conn.session.update(
-            session={
-                # 伺服端預設就會採用 VAD（Voice Activity Detection）
-                # 自動偵測講話啟始與結束，若改成 'turn_detection': None，
-                # 就會關閉自動偵測講話功能，要手動在講話結束時提交音訊資料
-                "turn_detection": None,
-        #         # 雖然 input_audio_transcription 的所有參數都是 optional，
-        #         # 但是若傳空的物件，雖然可以建立連線，但是開始傳送語音就會出錯
-        #         "input_audio_transcription": {"model": "whisper-1"},
-        #         "voice": "alloy",
-            }
+            session={"turn_detection": None}
         )
-
-        acc_items: dict[str, Any] = {}
 
         try:
             async for event in conn:
@@ -63,10 +51,6 @@ async def handle_realtime_connection() -> None:
 
                 # 回應內容的語音也是一段一段送來
                 if event.type == "response.audio.delta":
-                    if event.item_id != last_audio_item_id:
-                        audio_player.reset_frame_count()
-                        last_audio_item_id = event.item_id
-
                     bytes_data = base64.b64decode(event.delta)
                     audio_player.add_data(bytes_data)
                     continue
@@ -79,22 +63,11 @@ async def handle_realtime_connection() -> None:
 
                 # 回應內容的文字是用串流方式一段一段送回來
                 if event.type == "response.audio_transcript.delta":
-                    try:
-                        text = acc_items[event.item_id]
-                    except KeyError: # 第一次收到文字回應的片段
-                        acc_items[event.item_id] = event.delta
-                    else: # 累加之後收到的文字回應片段
-                        acc_items[event.item_id] = text + event.delta
-
-                    # 清除顯示區域重新顯示累加的回應內容才能呈現串流的效果
-                    # print(f"\r{acc_items[event.item_id]}", flush = True, end="")
                     continue
                 
                 # 當回應內容的文字送完了，就印出來
                 if event.type == "response.audio_transcript.done":
-                    # print(f"{acc_items[event.item_id]}")
                     print(event.transcript)
-                    del acc_items[event.item_id]
                     continue
 
         except asyncio.CancelledError:
@@ -144,13 +117,15 @@ async def send_mic_audio() -> None:
 async def main() -> None:
     mic_task = asyncio.create_task(send_mic_audio())
     realtime_task = asyncio.create_task(handle_realtime_connection())
+
     await connected.wait()
-    # should_send_audio.set()
+
     is_recording = False
     while True:
         keys = getkeys()
-        if len(keys) == 0:            
-            await asyncio.sleep(0)
+        if len(keys) == 0: 
+            # 請特別留意，如果設為等待 0 秒，就會發生頻繁插斷語音播放造成顫音
+            await asyncio.sleep(0.01)
             continue
         key = keys.pop().lower()
         if key == "k":
@@ -164,7 +139,7 @@ async def main() -> None:
                 await connection.response.create()
         elif key == "q":
             break
-        await asyncio.sleep(0)
+
     mic_task.cancel()
     realtime_task.cancel()
     await asyncio.gather(mic_task, realtime_task)

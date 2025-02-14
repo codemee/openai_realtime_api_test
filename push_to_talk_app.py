@@ -141,7 +141,8 @@ class RealtimeApp(App[None]):
             # if you want to manually handle VAD yourself, then set `'turn_detection': None`
             await conn.session.update(
                 session={
-                    "turn_detection": {"type": "server_vad"},
+                    # "turn_detection": {"type": "server_vad"},
+                    "turn_detection": None,
                     # 雖然 input_audio_transcription 的所有參數都是 optional，
                     # 但是若傳空的物件，雖然可以建立連線，但是開始傳送語音就會出錯
                     "input_audio_transcription": {"model": "whisper-1"},

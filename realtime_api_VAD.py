@@ -110,13 +110,14 @@ async def send_mic_audio() -> None:
 async def main() -> None:
     mic_task = asyncio.create_task(send_mic_audio())
     realtime_task = asyncio.create_task(handle_realtime_connection())
+
     await connected.wait()
-    # should_send_audio.set()
+
     is_recording = False
     while True:
         keys = getkeys()
         if len(keys) == 0:            
-            await asyncio.sleep(0)
+            await asyncio.sleep(0.1)
             continue
         key = keys.pop().lower()
         if key == "k":
@@ -127,7 +128,7 @@ async def main() -> None:
                 should_send_audio.clear()
         elif key == "q":
             break
-        await asyncio.sleep(0)
+
     mic_task.cancel()
     realtime_task.cancel()
     await asyncio.gather(mic_task, realtime_task)
