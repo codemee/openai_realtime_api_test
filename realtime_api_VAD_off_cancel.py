@@ -17,9 +17,10 @@ connection: AsyncRealtimeConnection | None = None
 audio_player: AudioPlayerAsync = AudioPlayerAsync()
 should_send_audio: asyncio.Event = asyncio.Event()
 connected: asyncio.Event = asyncio.Event()
+response_id: str | None = None # 記錄目前回應的 id
 
 async def handle_realtime_connection() -> None:
-    global connection
+    global connection, response_id
     session: Session | None = None
 
     client: AsyncOpenAI = AsyncOpenAI()
@@ -54,7 +55,17 @@ async def handle_realtime_connection() -> None:
                     bytes_data = base64.b64decode(event.delta)
                     audio_player.add_data(bytes_data)
                     continue
-                                
+                
+                # 記錄當前回應的 id
+                if event.type == "response.created":
+                    response_id = event.response.id
+                    continue
+
+                # 清楚回應的 id
+                if event.type == "response.done":
+                    response_id = None
+                    continue
+                
                 # 回應內容的文字是用串流方式一段一段送回來
                 if event.type == "response.audio_transcript.delta":
                     continue
@@ -130,6 +141,13 @@ async def main() -> None:
             is_recording = not is_recording
             if is_recording:
                 should_send_audio.set()
+                # 先停止尚未結束的回應
+                if response_id:
+                    print('canceling...')
+                    await connection.response.cancel(
+                        # 未指定 id 就是目前在生成的回覆
+                        response_id=response_id
+                    )
             else:
                 should_send_audio.clear()
                 # 停止播放回覆語音
