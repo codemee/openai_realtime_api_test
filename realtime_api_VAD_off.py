@@ -12,6 +12,7 @@ from openai.types.beta.realtime.session import Session
 from openai.resources.beta.realtime.realtime import AsyncRealtimeConnection
 
 from getchar import getkeys
+from textwrap import fill
 
 connection: AsyncRealtimeConnection | None = None
 audio_player: AudioPlayerAsync = AudioPlayerAsync()
@@ -61,7 +62,7 @@ async def handle_realtime_connection() -> None:
                 
                 # 當回應內容的文字送完了，就印出來
                 if event.type == "response.audio_transcript.done":
-                    print(event.transcript)
+                    print(fill(event.transcript, width=30))
                     continue
 
                 if event.type == "error":
