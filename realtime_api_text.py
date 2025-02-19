@@ -1,6 +1,5 @@
 import asyncio
 from openai import AsyncOpenAI
-from textwrap import fill
 
 async def main():
     client = AsyncOpenAI()
@@ -15,7 +14,7 @@ async def main():
             item={
                 "type": "message",
                 "role": "user",
-                "content": [{"type": "input_text", "text": "你知道什麼是藍眼淚嗎？"}],
+                "content": [{"type": "input_text", "text": "Say hello!"}],
             }
         )
         # 要求生成回覆
@@ -28,7 +27,7 @@ async def main():
                 pass
 
             elif event.type == 'response.text.done':
-                print(fill(event.text, width=30))
+                print(event.text)
 
             elif event.type == "response.done":
                 # print(event.response.output[0].content[0].text)

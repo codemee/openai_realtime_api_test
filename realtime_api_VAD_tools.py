@@ -12,7 +12,6 @@ from openai.types.beta.realtime.session import Session
 from openai.resources.beta.realtime.realtime import AsyncRealtimeConnection
 
 from getchar import getkeys
-from textwrap import fill
 
 from search_tools import google_res, GoogleRes
 
@@ -79,7 +78,7 @@ async def handle_realtime_connection() -> None:
                 
                 # 當回應內容的文字送完了，就印出來
                 if event.type == "response.audio_transcript.done":
-                    print(fill(event.transcript, width=30))
+                    print(event.transcript)
                     continue
 
                 # 如果伺服端回應需要叫用函式
@@ -99,9 +98,6 @@ async def handle_realtime_connection() -> None:
                     )
                     # 請伺服端重新生成回應
                     await connection.response.create()
-                    continue
-                if event.type == "error":
-                    print(event.error.message)
                     continue
         except asyncio.CancelledError:
             pass
@@ -142,8 +138,6 @@ async def send_mic_audio() -> None:
         pass
     except asyncio.CancelledError:
         pass
-    except Exception as e:
-        print(f'{type(e)}: {e}')
     finally:
         stream.stop()
         stream.close()
