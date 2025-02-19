@@ -12,7 +12,9 @@ from openai.types.beta.realtime.session import Session
 from openai.resources.beta.realtime.realtime import AsyncRealtimeConnection
 
 from getchar import getkeys
-from textwrap import fill
+# from textwrap import fill
+from cjk_textwrap import fill
+# from wraptext import fill
 
 connection: AsyncRealtimeConnection | None = None
 audio_player: AudioPlayerAsync = AudioPlayerAsync()
